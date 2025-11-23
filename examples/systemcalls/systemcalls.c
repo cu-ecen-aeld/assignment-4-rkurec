@@ -1,11 +1,13 @@
 #include "systemcalls.h"
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <unistd.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -73,40 +75,40 @@ bool do_exec(int count, ...)
      *   as second argument to the execv() command.
      *
      */
-    fflush(stdout); // debug
     pid = fork();
     if (pid < 0)
     {
-        //printf("do_exec: count: %d, c: %s, %s, %s. fork failed\n", count, command[0], command[1], command[2]); // debug
         perror("fork failed");
         return (false);
     }
-    else if (pid == 0)
+    else if (pid == 0) // child process
     {
         if (execv(command[0], command) >= 0)
         {
-            //printf("do_exec: count: %d, c: %s, %s, %s. execv() true\n", count, command[0], command[1], command[2]); // debug
+            exit(EXIT_SUCCESS);
             return (true);
         }
         else
         {
-            //printf("do_exec: count: %d, c: %s, %s, %s. execv() false\n", count, command[0], command[1], command[2]); // debug
             perror("execv failed");
-            return (false);
+            exit(EXIT_FAILURE);
+            // return (false);
         }
     }
-    else
+    else // parent process
     {
         waitpid(pid, &status, 0);
-        if(WEXITSTATUS(status) >= 0)
+        if (WEXITSTATUS(status) >= 0)
         {
-            //printf("do_exec: count: %d, c: %s, %s, %s. waitpid()>=0. status=0x%x\n", count, command[0], command[1], command[2], status); // debug
-            if(WEXITSTATUS(status) == 0) return true;
+            if (WEXITSTATUS(status) == 0)
+            {
+                return true;
+            }
+            perror("WEXITSTATUS pid>0 success");
         }
         else
         {
-            perror("WEXITSTATUS error");
-            //printf("do_exec: count: %d, c: %s, %s, %s. waitpid()<0. status=0x%x\n", count, command[0], command[1], command[2], status); // debug
+            perror("WEXITSTATUS pid>0 error");
         }
     }
     return false;
@@ -146,60 +148,59 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     int fd = open(outputfile, O_WRONLY | O_TRUNC | O_CREAT, 0644);
     if (fd < 0)
     {
-        perror("open");
+        perror("open failed");
         return (false);
     }
 
-    fflush(stdout); // debug
     kidpid = fork();
     switch (kidpid)
     {
-    case -1:
+    case -1: // Fork failed
     {
-        close(fd);
         perror("fork failed");
+        close(fd);
         return (false);
     }
-    case 0:
+    case 0: // Child process
     {
         if (dup2(fd, 1) < 0)
         {
             perror("dup2");
             return (false);
         }
-        // command with path is command[0]. extract it and save the rest
+        close(fd);
+        // command with path is command[0]. arguments are command[1] ... command[count-1]
         if (execv(command[0], command) >= 0)
         {
-            close(fd);
-            printf("do_exec_redirect: count: %d, c: %s, %s, %s. execv returned true\n", count, command[0], command[1], command[2]); // debug
-            return (true);
+            exit(EXIT_SUCCESS);
         }
         else
         {
-            close(fd);
-            printf("do_exec_redirect: count: %d, c: %s, %s, %s. execv returned false\n", count, command[0], command[1], command[2]); // debug
             perror("execv failed");
-            return (false);
+            exit(EXIT_FAILURE);
         }
         break;
     }
-    default:
+    default: // Parent process
     {
         close(fd);
         if (waitpid(kidpid, &status, 0) == -1)
         {
-            printf("do_exec_redirect: count: %d, c: %s, %s, %s. waitpid returned false\n", count, command[0], command[1], command[2]); // debug
             perror("waitpid failed");
+            exit(EXIT_FAILURE);
+            return false;
         }
-        else if(WEXITSTATUS(status) == 0)
+        if (WEXITSTATUS(status))
         {
-            printf("do_exec_redirect: count: %d, c: %s, %s, %s. waitpid returned true\n", count, command[0], command[1], command[2]); // debug
-            return true;
+            perror("WEXITSTATUS pid>0 success");
         }
-        return false;
+        else
+        {
+            perror("WEXITSTATUS pid>0 error");
+        }
         break;
     }
     }
 
-
+    return false;
 }
