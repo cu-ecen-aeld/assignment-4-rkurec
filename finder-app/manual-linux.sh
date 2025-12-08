@@ -35,9 +35,18 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     git checkout ${KERNEL_VERSION}
 
     # TODO: Add your kernel build steps here
+    echo "building arch/${ARCH}/boot/Image (${KERNEL_VERSION}) in ${OUTDIR}/linux-stable"
+    #make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu-  # example
+    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} mrproper           # Clean kernel build including old configs
+    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} silentoldconfig    # Configure the kernel. maybe defconfig?
+    #make -j4 ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu-  # example
+    make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} all        # build the kernel image
+    #make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} module     # build the kernel modules
+    #make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} dtbs       # build the kernel device tree blobs
 fi
 
-echo "Adding the Image in outdir"
+echo "Adding ${ARCH} boot Image  to  ${OUTDIR}"
+cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}/
 
 echo "Creating the staging directory for the root filesystem"
 cd "$OUTDIR"
@@ -48,33 +57,63 @@ then
 fi
 
 # TODO: Create necessary base directories
+echo "Creating rootfs directory at ${OUTDIR}/rootfs and base directories"
+cd "$OUTDIR"
+mkdir -p rootfs
+cd rootfs
+mkdir -p bin dev etc home lib lib64 proc sbin sys tmp usr var
+mkdir -p usr/bin usr/lib usr/sbin
+mkdir -p var/log
+ls -al
 
 cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/busybox" ]
 then
-git clone git://busybox.net/busybox.git
+    git clone git://busybox.net/busybox.git
     cd busybox
     git checkout ${BUSYBOX_VERSION}
     # TODO:  Configure busybox
+    #git switch -c ${BUSYBOX_VERSION}
+    echo "Creating busybox config in ${OUTDIR}/busybox"
+    make defconfig ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE}
 else
     cd busybox
 fi
 
 # TODO: Make and install busybox
+echo "Creating busybox binary in ${OUTDIR}/busybox"
+make clean
+# build busybox
+make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} all 
+echo "Installing busybox to ${OUTDIR}/rootfs"
+make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} install CONFIG_PREFIX=${OUTDIR}/rootfs 
+chmod u+s ${OUTDIR}/rootfs/bin/busybox  # set the setuid bit for busybox
 
 echo "Library dependencies"
-${CROSS_COMPILE}readelf -a bin/busybox | grep "program interpreter"
-${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
+${CROSS_COMPILE}readelf -a ${OUTDIR}/rootfs/bin/busybox | grep "program interpreter"
+${CROSS_COMPILE}readelf -a ${OUTDIR}/rootfs/bin/busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
 
 # TODO: Make device nodes
 
 # TODO: Clean and build the writer utility
+echo "Building writer app in ${FINDER_APP_DIR}"
+cd "${FINDER_APP_DIR}"
+make clean
+make CROSS_COMPILE=${CROSS_COMPILE} all
 
 # TODO: Copy the finder related scripts and executables to the /home directory
 # on the target rootfs
+cp ${FINDER_APP_DIR}/writer         ${OUTDIR}/rootfs/home/
+cp ${FINDER_APP_DIR}/finder.sh      ${OUTDIR}/rootfs/home/
+cp ${FINDER_APP_DIR}/finder-test.sh ${OUTDIR}/rootfs/home/
+mkdir -p ${OUTDIR}/rootfs/home/conf
+cp ${FINDER_APP_DIR}/conf/username.txt  ${OUTDIR}/rootfs/home/conf/
+ls -al ${OUTDIR}/rootfs/home/
 
 # TODO: Chown the root directory
 
 # TODO: Create initramfs.cpio.gz
+echo "Creating initramfs.cpio.gz in ${OUTDIR}"
+find ${OUTDIR}/rootfs/ | cpio -o -H newc | gzip > ${OUTDIR}/initramfs.cpio.gz
