@@ -37,8 +37,8 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     # TODO: Add your kernel build steps here
     echo "building arch/${ARCH}/boot/Image (${KERNEL_VERSION}) in ${OUTDIR}/linux-stable"
     #make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu-  # example
-    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} mrproper           # Clean kernel build including old configs
-    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} silentoldconfig    # Configure the kernel. maybe defconfig?
+    make -i ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} mrproper    # Clean kernel build
+    make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} defconfig      # Configure the kernel
     #make -j4 ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu-  # example
     make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} all        # build the kernel image
     #make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} module     # build the kernel modules
@@ -108,12 +108,14 @@ make CROSS_COMPILE=${CROSS_COMPILE} all
 cp ${FINDER_APP_DIR}/writer         ${OUTDIR}/rootfs/home/
 cp ${FINDER_APP_DIR}/finder.sh      ${OUTDIR}/rootfs/home/
 cp ${FINDER_APP_DIR}/finder-test.sh ${OUTDIR}/rootfs/home/
+cp ${FINDER_APP_DIR}/autorun-qemu.sh ${OUTDIR}/rootfs/home/
 mkdir -p ${OUTDIR}/rootfs/home/conf
 cp ${FINDER_APP_DIR}/conf/username.txt  ${OUTDIR}/rootfs/home/conf/
 ls -al ${OUTDIR}/rootfs/home/
 
 # TODO: Chown the root directory
+chown -R root:root ${OUTDIR}/rootfs
 
 # TODO: Create initramfs.cpio.gz
 echo "Creating initramfs.cpio.gz in ${OUTDIR}"
-find ${OUTDIR}/rootfs/ | cpio -o -H newc | gzip > ${OUTDIR}/initramfs.cpio.gz
+find ${OUTDIR}/rootfs/. | cpio -ov -H newc --owner root:root | gzip > ${OUTDIR}/initramfs.cpio.gz
