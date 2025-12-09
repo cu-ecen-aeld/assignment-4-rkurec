@@ -118,4 +118,5 @@ chown -R root:root ${OUTDIR}/rootfs
 
 # TODO: Create initramfs.cpio.gz
 echo "Creating initramfs.cpio.gz in ${OUTDIR}"
-find ${OUTDIR}/rootfs/. | cpio -ov -H newc --owner root:root | gzip > ${OUTDIR}/initramfs.cpio.gz
+cd "${OUTDIR}/rootfs"
+find . | cpio -ov -H newc --owner root:root | gzip > ${OUTDIR}/initramfs.cpio.gz
