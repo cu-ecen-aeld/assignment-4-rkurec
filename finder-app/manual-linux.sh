@@ -34,7 +34,7 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     echo "Checking out version ${KERNEL_VERSION}"
     git checkout ${KERNEL_VERSION}
 
-    # TODO: Add your kernel build steps here
+    # kernel build steps here
     echo "building arch/${ARCH}/boot/Image (${KERNEL_VERSION}) in ${OUTDIR}/linux-stable"
     #make ARCH=arm64 CROSS_COMPILE=aarch64-none-linux-gnu-  # example
     make -i ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} mrproper    # Clean kernel build
@@ -56,7 +56,7 @@ then
     sudo rm  -rf ${OUTDIR}/rootfs
 fi
 
-# TODO: Create necessary base directories
+# Create necessary base directories
 echo "Creating rootfs directory at ${OUTDIR}/rootfs and base directories"
 cd "$OUTDIR"
 mkdir -p rootfs
@@ -72,7 +72,7 @@ then
     git clone git://busybox.net/busybox.git
     cd busybox
     git checkout ${BUSYBOX_VERSION}
-    # TODO:  Configure busybox
+    # Configure busybox
     #git switch -c ${BUSYBOX_VERSION}
     echo "Creating busybox config in ${OUTDIR}/busybox"
     make defconfig ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE}
@@ -80,7 +80,7 @@ else
     cd busybox
 fi
 
-# TODO: Make and install busybox
+# Make and install busybox
 echo "Creating busybox binary in ${OUTDIR}/busybox"
 make clean
 # build busybox
@@ -93,7 +93,7 @@ echo "Library dependencies"
 ${CROSS_COMPILE}readelf -a ${OUTDIR}/rootfs/bin/busybox | grep "program interpreter"
 ${CROSS_COMPILE}readelf -a ${OUTDIR}/rootfs/bin/busybox | grep "Shared library"
 
-# TODO: Add library dependencies to rootfs
+# Add library dependencies to rootfs
 cd "${OUTDIR}/rootfs"
 SYSROOT=$(${CROSS_COMPILE}gcc -print-sysroot)
 echo "Copying from ${SYSROOT}/lib library to ${OUTDIR}/rootfs/lib"
@@ -105,20 +105,20 @@ cp -a ${SYSROOT}/lib64/libresolv.so.2 lib64/
 cp -a ${SYSROOT}/lib64/libc.so.6 lib64/
 ls -al lib64/
 
-# TODO: Make device nodes
+# Make device nodes
 echo "Creating device nodes in ${OUTDIR}/rootfs/dev"
 cd "${OUTDIR}/rootfs"
 sudo mknod -m 666 dev/null c 1 3
 sudo mknod -m 600 dev/console c 5 1
 ls -al dev/
 
-# TODO: Clean and build the writer utility
+# Clean and build the writer utility
 echo "Building writer app in ${FINDER_APP_DIR}"
 cd "${FINDER_APP_DIR}"
 make clean
 make CROSS_COMPILE=${CROSS_COMPILE} all
 
-# TODO: Copy the finder related scripts and executables to the /home directory
+# Copy the finder related scripts and executables to the /home directory
 # on the target rootfs
 cp ${FINDER_APP_DIR}/writer         ${OUTDIR}/rootfs/home/
 cp ${FINDER_APP_DIR}/finder.sh      ${OUTDIR}/rootfs/home/
@@ -129,10 +129,10 @@ cp ${FINDER_APP_DIR}/conf/username.txt  ${OUTDIR}/rootfs/home/conf/
 cp ${FINDER_APP_DIR}/conf/assignment.txt  ${OUTDIR}/rootfs/home/conf/
 ls -al ${OUTDIR}/rootfs/home/
 
-# TODO: Chown the root directory
+# Chown the root directory
 sudo chown -R root:root ${OUTDIR}/rootfs
 
-# TODO: Create initramfs.cpio.gz
+# Create initramfs.cpio.gz
 echo "Creating initramfs.cpio.gz in ${OUTDIR}"
 cd "${OUTDIR}/rootfs"
 find . | cpio -ov -H newc --owner root:root | gzip > ${OUTDIR}/initramfs.cpio.gz

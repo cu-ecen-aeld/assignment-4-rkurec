@@ -20,7 +20,6 @@ bool do_system(const char *cmd)
 {
 
     /*
-     * TODO  add your code here
      *  Call the system() function with the command set in the cmd
      *   and return a boolean true if the system() call completed with success
      *   or false() if it returned a failure
@@ -67,7 +66,6 @@ bool do_exec(int count, ...)
     va_end(args);
 
     /*
-     * TODO:
      *   Execute a system command by calling fork, execv(),
      *   and wait instead of system (see LSP page 161).
      *   Use the command[0] as the full path to the command to execute
@@ -135,7 +133,6 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     va_end(args);
 
     /*
-     * TODO
      *   Call execv, but first using https://stackoverflow.com/a/13784315/1446624 as a refernce,
      *   redirect standard out to a file specified by outputfile.
      *   The rest of the behaviour is same as do_exec()
